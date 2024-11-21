@@ -21,4 +21,4 @@ build-docker-master:
     - echo "Deploying on CapRover..."
     - docker run caprover/cli-caprover:v2.1.1 caprover deploy --caproverUrl https://captain.caprover.temporary.sbs --caproverPassword 12345678 --caproverApp api-user --imageName img-captain-api-user:0
   only:
-    - master
+    - main
