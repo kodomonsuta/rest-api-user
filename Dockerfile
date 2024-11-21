@@ -1,13 +1,11 @@
-# Gunakan base image PHP
+# Menggunakan base image PHP versi 8.2 dengan FPM
 FROM php:8.2-fpm
 
-# Set environment variables
-ENV APP_ENV=production \
-    APP_DEBUG=false \
-    COMPOSER_ALLOW_SUPERUSER=1
+# Set environment variable untuk timezone
+ENV TZ=Asia/Jakarta
 
-# Install PHP dependencies
-RUN apt-get update && apt-get install -y \
+# Update, install dependensi sistem dan ekstensi PHP
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
@@ -15,27 +13,34 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+        pdo \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-# Set the working directory
-WORKDIR /var/www
+# Set working directory di dalam container
+WORKDIR /var/www/html
 
-# Copy application files
+# Copy semua file project ke dalam container
 COPY . .
 
-# Install application dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Memberikan permission ke storage dan cache Laravel
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Set permissions for Laravel storage and cache
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
-
-# Expose port 9000 (default PHP-FPM port)
+# Expose port PHP-FPM
 EXPOSE 9000
 
-# Start PHP-FPM
+# Jalankan PHP-FPM
 CMD ["php-fpm"]
