@@ -17,7 +17,6 @@ class Handler extends ExceptionHandler
         if ($exception instanceof ApiException) {
             return $exception->render($request);
         }
-
         return parent::render($request, $exception);
     }
 }
