@@ -1,46 +1,29 @@
-# Menggunakan base image PHP versi 8.2 dengan FPM
-FROM php:8.2-fpm
+FROM serversideup/php:8.3-fpm-nginx
 
-# Set environment variable untuk timezone
-ENV TZ=Asia/Jakarta
+ENV PHP_OPCACHE_ENABLE=1
 
-# Update, install dependensi sistem dan ekstensi PHP
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libzip-dev \
-    unzip \
-    git \
-    curl \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        gd \
-        zip \
+USER root
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+# Copy application files
+COPY --chown=www-data:www-data . /var/www/html
 
-# Set working directory di dalam container
-WORKDIR /var/www/html
+# Switch to non-root user
+USER www-data
 
-# Copy semua file project ke dalam container
-COPY . .
+# Install dependencies and build
+RUN npm ci \
+    && npm run build \
+    && rm -rf /var/www/html/.npm
 
-# Memberikan permission ke storage dan cache Laravel
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Install PHP dependencies
+RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# Expose port PHP-FPM
-EXPOSE 9000
-
-# Jalankan PHP-FPM
-CMD ["php-fpm"]
+# Remove composer cache
+RUN rm -rf /var/www/html/.composer/cache
